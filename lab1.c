@@ -13,6 +13,8 @@
 //      e.g. mygrep: cannot open file: no such file
 // XXX: return code should be same as grep - 0 if line is selected, 1 if no line
 //      is selected, 2 if error occurred
+// XXX: can set static buffer size of 512 or 1024 or something using
+//      preprocessor directive like "#define BUFFER_SIZE 512"
 
 // FUNCTION PROTOTYPES
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert);
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]) {
 	char *searchstr;
 	// file paths from argument
 	char **filenames;
-	// index of current position in argv
+	// index of current position in argv - start from index 1 because index 0 is executable name
 	int argidx = 1;
 
 	// TODO examine the command line args to get search string, check for
@@ -130,9 +132,11 @@ char *get_next_line(FILE *fpntr) {
 	// TODO iteratively call fgetc() to obtain the next character from
 	//      stream until the end of the current line is detected or error
 	//      occurs when reading
-	//      note that fgetc() has an int return type due to the possibility
+	// XXX  note that fgetc() has an int return type due to the possibility
 	//      of errors or EOF (normally -1) - the difference can be
 	//      distinguished using ferror() or feof() or even errno
+	// XXX  an int array should be used to read in characters because of EOF
+	//      it can always be typecast back to char
 	
 	// TODO store each read char into a line buffer array created with
 	//      malloc() - remember to allocate an extra byte at the end for the
