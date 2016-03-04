@@ -13,15 +13,46 @@
 //      e.g. mygrep: cannot open file: no such file
 
 // FUNCTION PROTOTYPES
-int grep_stream(FILE *fpntr, char *string, char *file_pathname);
+int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert);
 char *get_next_line(FILE *fpntr);
 
 
 int main(int argc, char *argv[]) {
+	// boolean for inverse match
+	int invert = 0;
+	// file handle for open file
+	FILE *fileh;
+	// search string from argument
+	char *searchstr;
+	// file paths from argument
+	char **filenames;
+	// index of current position in argv
+	int argidx = 0;
+
 	// TODO examine the command line args to get search string, check for
 	//      invert option '-v' or '--invert-match', and determine if reading
 	//      a file or from stdin
 	// note: if invert option is specified, it must be the first argument
+	if ( strcmp(argv[0],"-v") == 0 || strcmp(argv[0],"--invert-match") == 0 ) {
+		invert = 1;
+		argidx = 1;
+	}
+	// get the search string
+	searchstr = argv[argidx];
+	// go to the next argument - start of the file paths
+	argidx++;
+	// index for filenames
+	int fidx = 0;
+	// get the file paths
+	for (argidx; argidx <= argc; argidx++) {
+		filenames[fidx++] = argv[argidx];
+	}
+	int numfiles = fidx+1;
+	// print the file paths
+	for (fidx=0; fidx<numfiles; fidx++) {
+		printf("%s\n",filenames[fidx++]);
+	}
+	exit(0);
 	
 	// TODO if there is an error with the arguments, output should be a
 	//      usage message
@@ -29,6 +60,10 @@ int main(int argc, char *argv[]) {
 	// TODO if a file is to be processed, open it. otherwise use stdin
 	
 	// TODO call function to process the stream
+	// current filename
+	char *curfile;
+	// TODO for loop here
+		grep_stream(fileh,searchstr,curfile,invert);
 	
 	// TODO when function returns, close stream if it was a file
 	
@@ -43,7 +78,7 @@ int main(int argc, char *argv[]) {
 //  string, prints them to stdout, returns true if any matching lines are
 //  found, returns false if no matching lines were found
 // XXX: this function should always return, never calling exit()
-int grep_stream(FILE *fpntr, char *string, char *file_pathname) {
+int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert) {
 	// initialize return code to false
 	// gets changed to true if any lines are matched
 	int returncode = 0;
@@ -52,6 +87,12 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname) {
 	// TODO for each returned line, check if it contains the search string
 	
 	// TODO if the line should be printed, print to stdout
+	if (invert == 1) {
+		// TODO print only lines that do not match
+	}
+	else {
+		// TODO print only lines that match
+	}
 	
 	// TODO when function returns NULL, return true or false depending on
 	//      whether any matching lines were found - true if any found, false
