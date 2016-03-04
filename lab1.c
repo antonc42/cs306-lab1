@@ -11,10 +11,13 @@
 // XXX: in the event of a error with a library call, print the standard system
 //      message using perror() or strerror()
 //      e.g. mygrep: cannot open file: no such file
+// XXX: return code should be same as grep - 0 if line is selected, 1 if no line
+//      is selected, 2 if error occurred
 
 // FUNCTION PROTOTYPES
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert);
 char *get_next_line(FILE *fpntr);
+void freestrarr(int size, char **arr);
 
 
 int main(int argc, char *argv[]) {
@@ -27,32 +30,44 @@ int main(int argc, char *argv[]) {
 	// file paths from argument
 	char **filenames;
 	// index of current position in argv
-	int argidx = 0;
+	int argidx = 1;
 
 	// TODO examine the command line args to get search string, check for
 	//      invert option '-v' or '--invert-match', and determine if reading
 	//      a file or from stdin
 	// note: if invert option is specified, it must be the first argument
-	if ( strcmp(argv[0],"-v") == 0 || strcmp(argv[0],"--invert-match") == 0 ) {
+	if ( strcmp(argv[argidx],"-v") == 0 || strcmp(argv[argidx],"--invert-match") == 0 ) {
 		invert = 1;
-		argidx = 1;
+		argidx++;
 	}
 	// get the search string
 	searchstr = argv[argidx];
 	// go to the next argument - start of the file paths
 	argidx++;
+	// calculate how many filenames there are
+	int numfiles = argc - argidx;
+	// allocate memory in filename array for each file arg
+	filenames = malloc(numfiles * sizeof(char *));
 	// index for filenames
 	int fidx = 0;
+	// length of each arg
+	int arglen;
 	// get the file paths
-	for (argidx; argidx <= argc; argidx++) {
-		filenames[fidx++] = argv[argidx];
+	for (; argidx < argc; argidx++) {
+		// find length of arg
+		arglen = strlen(argv[argidx]);
+		// allocate some memory to store arg in filename array
+		filenames[fidx] = (char *) malloc((arglen+1) * sizeof(char));
+		// copy argument to filename array
+		strcpy(filenames[fidx],argv[argidx]);
+		// increment index of filename array
+		fidx++;
 	}
-	int numfiles = fidx+1;
+	printf("%d\n",numfiles);
 	// print the file paths
 	for (fidx=0; fidx<numfiles; fidx++) {
-		printf("%s\n",filenames[fidx++]);
+		printf("%s\n",filenames[fidx]);
 	}
-	exit(0);
 	
 	// TODO if there is an error with the arguments, output should be a
 	//      usage message
@@ -61,10 +76,12 @@ int main(int argc, char *argv[]) {
 	
 	// TODO call function to process the stream
 	// current filename
-	char *curfile;
+	//char *curfile;
 	// TODO for loop here
-		grep_stream(fileh,searchstr,curfile,invert);
+	//	grep_stream(fileh,searchstr,curfile,invert);
 	
+	// free the memory allocated for the array of filenames
+	freestrarr(numfiles,filenames);
 	// TODO when function returns, close stream if it was a file
 	
 	// TODO exit with appropriate exit status
@@ -129,4 +146,16 @@ char *get_next_line(FILE *fpntr) {
 
 	// return next line in the stream as a string
 	return nextline;
+}
+
+
+// size is number of elements in string array
+// arr is the string array
+// frees allocated memory for a string array
+void freestrarr(int size, char **arr) {
+	int idx;
+	for (idx=0; idx < size; idx++) {
+		free(arr[idx]);
+	}
+	free(arr);
 }
