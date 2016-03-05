@@ -149,13 +149,21 @@ int main(int argc, char *argv[]) {
 		for (fidx=0; fidx<numfiles; fidx++) {
 			// check if file exists
 			if (access(filenames[fidx],F_OK) == 0) {
-				
+				// if file is not readable, print error and exit
+				if (access(filenames[fidx],R_OK) != 0) {
+					fprintf(stderr,"%s: file '%s' is not "
+						"readable: %s\n",argv[0],
+						filenames[fidx],
+						strerror(errno));
+					return(R_ERROR);
+				}
 			}
 			// if file doesn't exist, print error and exit
 			else {
-				fprintf(stderr,"%s: file '%s' does not exist: %s",
-					argv[0],filenames[fidx],
+				fprintf(stderr,"%s: file '%s' does not exist: "
+					"%s\n",argv[0],filenames[fidx],
 					strerror(errno));
+				return(R_ERROR);
 			}
 		}
 	}
