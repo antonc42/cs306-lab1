@@ -1,6 +1,13 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+// unistd.h is included for the access() function and associated constants
+//  the access() function tests for file existence and permissions
+#include<unistd.h>
+// errno.h is included for the errno variable that is set by system calls and
+//  library functions when an error occurs - for use with perror() and
+//  strerror()
+#include <errno.h>
 
 // REQUIREMENTS
 // XXX: the executable for this program should be named 'mygrep'
@@ -132,8 +139,25 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// check if search string was given in args
-	if (searchstr == NULL || searchstring[0] == '\0') {
-		
+	if (searchstr == NULL || searchstr[0] == '\0') {
+		// if no search string given, print usage and exit
+		printusage(argv[0]);
+		exit(R_ERROR);
+	}
+	// check each filename given in args for existence and readability
+	if (numfiles > 0) {
+		for (fidx=0; fidx<numfiles; fidx++) {
+			// check if file exists
+			if (access(filenames[fidx],F_OK) == 0) {
+				
+			}
+			// if file doesn't exist, print error and exit
+			else {
+				fprintf(stderr,"%s: file '%s' does not exist: %s",
+					argv[0],filenames[fidx],
+					strerror(errno));
+			}
+		}
 	}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -235,5 +259,5 @@ void freestrarr(int size, char **arr) {
 
 // prints usage message
 void printusage(char *progname) {
-	printf("Usage: %s [-v|--invert-match] PATTERN [FILE]...\n",progname);
+	fprintf(stderr,"Usage: %s [-v|--invert-match] PATTERN [FILE]...\n",progname);
 }
