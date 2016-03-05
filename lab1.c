@@ -36,7 +36,7 @@
 
 
 // FUNCTION PROTOTYPES
-int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert);
+int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert, int printfname);
 char *get_next_line(FILE *fpntr);
 void freestrarr(int size, char **arr);
 void printusage(char *progname);
@@ -66,6 +66,13 @@ int main(int argc, char *argv[]) {
 	int fidx = 0;
 	// length of each filename arg
 	int arglen;
+	// keep track of return code from grep_stream function to determine if
+	//  any matches were found
+	int match;
+	// boolean to signal if filename should be prepended before matched
+	//  lines. this should only happen if more than one filename is given in
+	//  args
+	int printfname = 0;
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// END VARIABLE DECLARATIONS
@@ -103,6 +110,9 @@ int main(int argc, char *argv[]) {
 	numfiles = argc - argidx;
 	// if there are filename args given, read them in
 	if (numfiles > 0) {
+		// if more than one file is given in args, set flag to print
+		//  filename before matched lines
+		if (numfiles > 1) { printfname = 1; }
 		// allocate memory in filename array for each file arg
 		filenames = malloc(numfiles * sizeof(char *));
 		// get the file paths
@@ -110,7 +120,8 @@ int main(int argc, char *argv[]) {
 			// find length of arg
 			arglen = strlen(argv[argidx]);
 			// allocate some memory to store arg in filename array
-			filenames[fidx] = (char *) malloc((arglen+1) * sizeof(char));
+			filenames[fidx] = (char *) malloc((arglen+1) * 
+				sizeof(char));
 			// copy argument to filename array
 			strcpy(filenames[fidx],argv[argidx]);
 			// increment index of filename array
@@ -172,32 +183,83 @@ int main(int argc, char *argv[]) {
 	// END ARGUMENT CHECKING
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
+	
+
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// START STREAM PROCESSING
 	// TODO if a file is to be processed, open it. otherwise use stdin
-	
 	// TODO call function to process the stream
-	// current filename
-	//char *curfile;
-	// TODO for loop here
-	//	grep_stream(fileh,searchstr,curfile,invert);
-	
 	// TODO when function returns, close stream if it was a file
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// if no files were given, read from stdin
+	if (readstdin) {
+		// look for string match in stdin
+		match = grep_stream(stdin,searchstr,NULL,invert,printfname);
+	}
+	else {
+		// loop through each file given in args
+		for(fidx=0; fidx<numfiles; fidx++) {
+			// open the file for reading only
+			fileh = fopen(filenames[fidx],"r");
+			// if there is a problem opening, skip to next iteration
+			//  of loop
+			if ( fileh == NULL) {
+				fprintf(stderr,"%s: file '%s' failed to open: "
+					"%s\n",argv[0],filenames[fidx],
+					strerror(errno));
+				continue;
+			}
+			// look for string match in file
+			match = grep_stream(fileh,searchstr,filenames[fidx],
+				invert,printfname);
+			// close the file, printing error if unsuccessful
+			if (fclose(fileh) != 0) {
+				fprintf(stderr,"%s: file '%s' failed to close: "
+					"%s\n",argv[0],filenames[fidx],
+					strerror(errno));
+			}
+		}
+	}
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// END STREAM PROCESSING
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// START CLEANUP AND RETURN
+	// TODO free any allocated memory
+	// TODO exit with appropriate exit status
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	// if not reading from stdin, assume that memory was allocated for array
 	//  of filenames, so free the memory
 	if (! readstdin) { freestrarr(numfiles,filenames); }
-
-	// TODO exit with appropriate exit status
-	return(R_NOMATCH);	
+	// return appropriate code based on if match was found
+	if (match) { return(R_MATCH); }
+	else { return(R_NOMATCH); }
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// END CLEANUP AND RETURN
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 }
 
 // fpntr is an open file stream
 // string is the search string
 // file_pathname is the file path to read, or stdin
+// invert is boolean to invert match or normal match
+// printfname is boolean to print filenames before matching lines if more than
+//  one file is given in args
 // reads line-by-line through the file, matches lines based on the search
 //  string, prints them to stdout, returns true if any matching lines are
 //  found, returns false if no matching lines were found
 // XXX: this function should always return, never calling exit()
-int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert) {
+int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
+	int printfname) {
 	// initialize return code to false
 	// gets changed to true if any lines are matched
 	int returncode = 0;
@@ -212,6 +274,9 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert) {
 	else {
 		// TODO print only lines that match
 	}
+	
+	// FIXME debugging
+	printf("greping for '%s' from file '%s'\n",string,file_pathname);
 	
 	// TODO when function returns NULL, return true or false depending on
 	//      whether any matching lines were found - true if any found, false
@@ -228,7 +293,13 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert) {
 // XXX: this function should not print any error messages or other output and
 //      it must always return
 char *get_next_line(FILE *fpntr) {
-	char *nextline;
+	// current size of the buffer
+	int buffsize = 1024;
+	// char array to store line to return
+	//  initialize with current buffer size
+	char *line = malloc((buffsize+1) * sizeof(char));
+	// int to store each char returned from stream
+	int currchar = 0;
 	// TODO iteratively call fgetc() to obtain the next character from
 	//      stream until the end of the current line is detected or error
 	//      occurs when reading
@@ -237,7 +308,11 @@ char *get_next_line(FILE *fpntr) {
 	//      distinguished using ferror() or feof() or even errno
 	// XXX  an int array should be used to read in characters because of EOF
 	//      it can always be typecast back to char
-	
+	while (currchar != (int) '\n' && feof(fpntr) == 0 && ferror(fpntr) == 0)
+	{
+		currchar = fgetc(fpntr);
+		if (ferror(fpntr) != 0 ) { return NULL; }
+	}
 	// TODO store each read char into a line buffer array created with
 	//      malloc() - remember to allocate an extra byte at the end for the
 	//      null character '\0'
@@ -249,7 +324,7 @@ char *get_next_line(FILE *fpntr) {
 	//      a valid C string and return it
 
 	// return next line in the stream as a string
-	return nextline;
+	return line;
 }
 
 
