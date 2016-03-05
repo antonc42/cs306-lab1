@@ -9,22 +9,42 @@
 // XXX: all error messages should go to stderr, not stdout
 // XXX: must error check the original call and all library calls
 // XXX: in the event of a error with a library call, print the standard system
-//      message using perror() or strerror()
-//      e.g. mygrep: cannot open file: no such file
-// XXX: return code should be same as grep - 0 if line is selected, 1 if no line
-//      is selected, 2 if error occurred
+//       message using perror() or strerror()
+//       e.g. mygrep: cannot open file: no such file
+// XXX: return code should be same as grep: 0 if line is selected, 1 if no line
+//       is selected, 2 if error occurred - this behavior is pretty much the
+//       same when the '-v' or '--invert-match' option is used, however what
+//       happens is: 0 if there are any lines that do not match, 1 if all lines
+//       match, and 2 if there is an error - this has been tested with the
+//       original grep program - in effect, either with or without the '-v' or
+//       '--invert-match' option, the return codes are: 0 if any lines are
+//       printed, 1 if no lines are printed, 2 if there is an error
 // XXX: can set static buffer size of 512 or 1024 or something using
-//      preprocessor directive like "#define BUFFER_SIZE 512"
+//       preprocessor directive like "#define BUFFER_SIZE 512"
+
+// preprocessor directives for exit codes
+#define R_MATCH 0
+#define R_NOMATCH 1
+#define R_ERROR 2
+
 
 // FUNCTION PROTOTYPES
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert);
 char *get_next_line(FILE *fpntr);
 void freestrarr(int size, char **arr);
+void printusage(char *progname);
 
 
 int main(int argc, char *argv[]) {
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// START VARIABLE DECLARATIONS
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	// boolean for inverse match
 	int invert = 0;
+	// boolean for reading stdin instead of file
+	int readstdin = 0;
 	// file handle for open file
 	FILE *fileh;
 	// search string from argument
@@ -33,47 +53,93 @@ int main(int argc, char *argv[]) {
 	char **filenames;
 	// index of current position in argv - start from index 1 because index 0 is executable name
 	int argidx = 1;
-
+	// number of files given in args
+	int numfiles;
+	// index for filenames
+	int fidx = 0;
+	// length of each filename arg
+	int arglen;
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// END VARIABLE DECLARATIONS
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// START ARGUMENT PARSING
 	// TODO examine the command line args to get search string, check for
 	//      invert option '-v' or '--invert-match', and determine if reading
 	//      a file or from stdin
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// if there are no arguments, print usage message and exit with error status
+	if ( argc == 1 ) {
+		printusage(argv[0]);
+		return(R_ERROR);
+	}
 	// note: if invert option is specified, it must be the first argument
-	if ( strcmp(argv[argidx],"-v") == 0 || strcmp(argv[argidx],"--invert-match") == 0 ) {
+	if ( strcmp(argv[argidx],"-v") == 0 ||
+		 strcmp(argv[argidx],"--invert-match") == 0 ) {
+		// if the option is specified, set the boolean flag and
+		//  increment the arg index
 		invert = 1;
 		argidx++;
 	}
-	// get the search string
+	// get the search string from arg
 	searchstr = argv[argidx];
+	// FIXME debugging
+	printf("search: %s\n",searchstr);
 	// go to the next argument - start of the file paths
 	argidx++;
 	// calculate how many filenames there are
-	int numfiles = argc - argidx;
-	// allocate memory in filename array for each file arg
-	filenames = malloc(numfiles * sizeof(char *));
-	// index for filenames
-	int fidx = 0;
-	// length of each arg
-	int arglen;
-	// get the file paths
-	for (; argidx < argc; argidx++) {
-		// find length of arg
-		arglen = strlen(argv[argidx]);
-		// allocate some memory to store arg in filename array
-		filenames[fidx] = (char *) malloc((arglen+1) * sizeof(char));
-		// copy argument to filename array
-		strcpy(filenames[fidx],argv[argidx]);
-		// increment index of filename array
-		fidx++;
+	numfiles = argc - argidx;
+	// if there are filename args given, read them in
+	if (numfiles > 0) {
+		// allocate memory in filename array for each file arg
+		filenames = malloc(numfiles * sizeof(char *));
+		// get the file paths
+		for (; argidx < argc; argidx++) {
+			// find length of arg
+			arglen = strlen(argv[argidx]);
+			// allocate some memory to store arg in filename array
+			filenames[fidx] = (char *) malloc((arglen+1) * sizeof(char));
+			// copy argument to filename array
+			strcpy(filenames[fidx],argv[argidx]);
+			// increment index of filename array
+			fidx++;
+		}
+		// FIXME debugging
+		printf("number of files: %d\n",numfiles);
+		// FIXME degugging - print the file paths
+		for (fidx=0; fidx<numfiles; fidx++) {
+			printf("%s\n",filenames[fidx]);
+		}
 	}
-	printf("%d\n",numfiles);
-	// print the file paths
-	for (fidx=0; fidx<numfiles; fidx++) {
-		printf("%s\n",filenames[fidx]);
-	}
+	// if there are no filename args, assume stdin (set flag)
+	else { readstdin = 1; }
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// END ARGUMENT PARSING
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// START ARGUMENT CHECKING
 	// TODO if there is an error with the arguments, output should be a
 	//      usage message
-	
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// check if search string was given in args
+	if (searchstr == NULL || searchstring[0] == '\0') {
+		
+	}
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	// END ARGUMENT CHECKING
+	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	// TODO if a file is to be processed, open it. otherwise use stdin
 	
 	// TODO call function to process the stream
@@ -82,12 +148,14 @@ int main(int argc, char *argv[]) {
 	// TODO for loop here
 	//	grep_stream(fileh,searchstr,curfile,invert);
 	
-	// free the memory allocated for the array of filenames
-	freestrarr(numfiles,filenames);
 	// TODO when function returns, close stream if it was a file
 	
+	// if not reading from stdin, assume that memory was allocated for array
+	//  of filenames, so free the memory
+	if (! readstdin) { freestrarr(numfiles,filenames); }
+
 	// TODO exit with appropriate exit status
-	return EXIT_SUCCESS;	
+	return(R_NOMATCH);	
 }
 
 // fpntr is an open file stream
@@ -162,4 +230,10 @@ void freestrarr(int size, char **arr) {
 		free(arr[idx]);
 	}
 	free(arr);
+}
+
+
+// prints usage message
+void printusage(char *progname) {
+	printf("Usage: %s [-v|--invert-match] PATTERN [FILE]...\n",progname);
 }
