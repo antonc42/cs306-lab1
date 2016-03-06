@@ -38,7 +38,7 @@
 // preprocessor directive for program name
 #define PROG_NAME "mygrep"
 // preprocessor directive of buffer size
-#define BUFF_SIZE 50
+#define BUFF_SIZE 1024
 
 // FUNCTION PROTOTYPES
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
