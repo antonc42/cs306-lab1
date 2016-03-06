@@ -33,7 +33,8 @@
 #define R_MATCH 0
 #define R_NOMATCH 1
 #define R_ERROR 2
-
+// preprocessor directive for program name
+#define PROG_NAME "mygrep"
 
 // FUNCTION PROTOTYPES
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert, int printfname);
@@ -68,7 +69,7 @@ int main(int argc, char *argv[]) {
 	int arglen;
 	// keep track of return code from grep_stream function to determine if
 	//  any matches were found
-	int match;
+	int foundmatch = 0;
 	// boolean to signal if filename should be prepended before matched
 	//  lines. this should only happen if more than one filename is given in
 	//  args
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	// if there are no arguments, print usage message and exit with error status
 	if ( argc == 1 ) {
-		printusage(argv[0]);
+		printusage(PROG_NAME);
 		return(R_ERROR);
 	}
 	// note: if invert option is specified, it must be the first argument
@@ -103,7 +104,7 @@ int main(int argc, char *argv[]) {
 	// get the search string from arg
 	searchstr = argv[argidx];
 	// FIXME debugging
-	printf("search: %s\n",searchstr);
+	//printf("search: %s\n",searchstr);
 	// go to the next argument - start of the file paths
 	argidx++;
 	// calculate how many filenames there are
@@ -128,11 +129,11 @@ int main(int argc, char *argv[]) {
 			fidx++;
 		}
 		// FIXME debugging
-		printf("number of files: %d\n",numfiles);
+		//printf("number of files: %d\n",numfiles);
 		// FIXME degugging - print the file paths
-		for (fidx=0; fidx<numfiles; fidx++) {
-			printf("%s\n",filenames[fidx]);
-		}
+		//for (fidx=0; fidx<numfiles; fidx++) {
+		//	printf("%s\n",filenames[fidx]);
+		//}
 	}
 	// if there are no filename args, assume stdin (set flag)
 	else { readstdin = 1; }
@@ -152,7 +153,7 @@ int main(int argc, char *argv[]) {
 	// check if search string was given in args
 	if (searchstr == NULL || searchstr[0] == '\0') {
 		// if no search string given, print usage and exit
-		printusage(argv[0]);
+		printusage(PROG_NAME);
 		exit(R_ERROR);
 	}
 	// check each filename given in args for existence and readability
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
 				// if file is not readable, print error and exit
 				if (access(filenames[fidx],R_OK) != 0) {
 					fprintf(stderr,"%s: file '%s' is not "
-						"readable: %s\n",argv[0],
+						"readable: %s\n",PROG_NAME,
 						filenames[fidx],
 						strerror(errno));
 					return(R_ERROR);
@@ -172,7 +173,7 @@ int main(int argc, char *argv[]) {
 			// if file doesn't exist, print error and exit
 			else {
 				fprintf(stderr,"%s: file '%s' does not exist: "
-					"%s\n",argv[0],filenames[fidx],
+					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
 				return(R_ERROR);
 			}
@@ -196,7 +197,7 @@ int main(int argc, char *argv[]) {
 	// if no files were given, read from stdin
 	if (readstdin) {
 		// look for string match in stdin
-		match = grep_stream(stdin,searchstr,NULL,invert,printfname);
+		foundmatch += grep_stream(stdin,searchstr,NULL,invert,printfname);
 	}
 	else {
 		// loop through each file given in args
@@ -207,17 +208,21 @@ int main(int argc, char *argv[]) {
 			//  of loop
 			if ( fileh == NULL) {
 				fprintf(stderr,"%s: file '%s' failed to open: "
-					"%s\n",argv[0],filenames[fidx],
+					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
 				continue;
 			}
+			// FIXME debugging
+			//printf("foundmatch before '%s': %d\n",filenames[fidx],foundmatch);
 			// look for string match in file
-			match = grep_stream(fileh,searchstr,filenames[fidx],
-				invert,printfname);
+			foundmatch += grep_stream(fileh,searchstr,
+				filenames[fidx],invert,printfname);
+			// FIXME debugging
+			//printf("foundmatch after: %d\n",foundmatch);
 			// close the file, printing error if unsuccessful
 			if (fclose(fileh) != 0) {
 				fprintf(stderr,"%s: file '%s' failed to close: "
-					"%s\n",argv[0],filenames[fidx],
+					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
 			}
 		}
@@ -239,7 +244,7 @@ int main(int argc, char *argv[]) {
 	//  of filenames, so free the memory
 	if (! readstdin) { freestrarr(numfiles,filenames); }
 	// return appropriate code based on if match was found
-	if (match) { return(R_MATCH); }
+	if (foundmatch>0) { return(R_MATCH); }
 	else { return(R_NOMATCH); }
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -261,22 +266,40 @@ int main(int argc, char *argv[]) {
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 	int printfname) {
 	// initialize return code to false
-	// gets changed to true if any lines are matched
+	// gets changed if any lines are matched
 	int returncode = 0;
+	// string to store each line
+	char *line;
 	// TODO iteratively call function to get next line from the stream
-	
-	// TODO for each returned line, check if it contains the search string
-	
-	// TODO if the line should be printed, print to stdout
-	if (invert == 1) {
-		// TODO print only lines that do not match
+	//      use strcopy to copy return to string
+	while (feof(fpntr) == 0) {
+		line = get_next_line(fpntr);
+		if (line == NULL) {
+			fprintf(stderr,"%s: error reading line from file: %s\n",
+				PROG_NAME,strerror(errno));
+			return(R_ERROR);
+		}
+		// TODO for each returned line, check if it contains the search string
+		if (strstr(line,string) != NULL) {
+			// TODO if the line should be printed, print to stdout
+			if (invert != 1) {
+				returncode = 1;
+				if (printfname) { printf("%s:%s\n",file_pathname,line); }
+				else { printf("%s\n",line); }
+			}
+		}
+		else {
+			// TODO print only lines that do not match
+			if (invert == 1) {
+				returncode = 1;
+				if (printfname) { printf("%s:%s\n",file_pathname,line); }
+				else { printf("%s\n",line); }
+			}
+		}
+		free(line);
 	}
-	else {
-		// TODO print only lines that match
-	}
-	
 	// FIXME debugging
-	printf("greping for '%s' from file '%s'\n",string,file_pathname);
+	//printf("greping for '%s' from file '%s'\n",string,file_pathname);
 	
 	// TODO when function returns NULL, return true or false depending on
 	//      whether any matching lines were found - true if any found, false
@@ -298,8 +321,17 @@ char *get_next_line(FILE *fpntr) {
 	// char array to store line to return
 	//  initialize with current buffer size
 	char *line = malloc((buffsize+1) * sizeof(char));
+	// return null from the function if malloc fails
+	if (line == NULL) { return(NULL); }
 	// int to store each char returned from stream
 	int currchar = 0;
+	// counter for place in buffer
+	int count = 0;
+
+	// get the next character from the file
+	currchar = fgetc(fpntr);
+	// if there was an error, return null from function
+	if (ferror(fpntr) != 0 ) { return(NULL); }
 	// TODO iteratively call fgetc() to obtain the next character from
 	//      stream until the end of the current line is detected or error
 	//      occurs when reading
@@ -308,20 +340,37 @@ char *get_next_line(FILE *fpntr) {
 	//      distinguished using ferror() or feof() or even errno
 	// XXX  an int array should be used to read in characters because of EOF
 	//      it can always be typecast back to char
-	while (currchar != (int) '\n' && feof(fpntr) == 0 && ferror(fpntr) == 0)
-	{
-		currchar = fgetc(fpntr);
-		if (ferror(fpntr) != 0 ) { return NULL; }
-	}
 	// TODO store each read char into a line buffer array created with
 	//      malloc() - remember to allocate an extra byte at the end for the
 	//      null character '\0'
-	
 	// TODO return NULL if there are no more lines or if error occurred, do
 	//      not print an error here - calling function should print error
-	
 	// TODO when the end of the line is reached, turn the buffer array into
 	//      a valid C string and return it
+	while (currchar != (int) '\n' && feof(fpntr) == 0 && ferror(fpntr) == 0)
+	{
+		// if the buffer size has been reached, increase the size of the
+		//  buffer and then add the char
+		if (count == buffsize) {
+			buffsize *= 2;
+			line = realloc(line, buffsize);
+			// return null from the function if realloc fails
+			if (line == NULL) { return(NULL); }
+			line[count] = (char) currchar;
+		}
+		// otherwise, just add the char to the buffer
+		else {
+			line[count] = (char) currchar;
+		}
+		// increment the buffer position counter
+		count++;
+		// get the next character from the file
+		currchar = fgetc(fpntr);
+		// if there was an error, return null from function
+		if (ferror(fpntr) != 0 ) { return(NULL); }
+	}
+	// stringify the buffer by adding null char at the end of the chars
+	line[++count] = '\0';
 
 	// return next line in the stream as a string
 	return line;
