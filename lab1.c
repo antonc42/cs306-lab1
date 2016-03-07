@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// START VARIABLE DECLARATIONS
+	// TODO initialize pointers to NULL
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// boolean for inverse match
@@ -136,6 +137,7 @@ int main(int argc, char *argv[]) {
 			// find length of arg
 			arglen = strlen(argv[argidx]);
 			// allocate some memory to store arg in filename array
+			// TODO remove char typecasting??
 			filenames[fidx] = (char *) malloc((arglen+1) * 
 				sizeof(char));
 			// if error allocating memory, print error and exit
