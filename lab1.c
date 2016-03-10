@@ -44,11 +44,11 @@
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
  int printfname);
 char *get_next_line(FILE *fpntr);
-void freestrarr(int size, char **arr);
-void printusage(char *progname);
-void removestr(char **arr, int index, int len);
-void printstrarr(char **arr, int len);
-void printbuffer(char *buff, int len);
+void free_str_arr(int size, char **arr);
+void print_usage(char *progname);
+void remove_str(char **arr, int index, int len);
+void print_str_arr(char **arr, int len);
+void print_buffer(char *buff, int len);
 
 // main function
 int main(int argc, char *argv[]) {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 	// if there are no arguments, print usage message and exit with error
 	//  status
 	if ( argc == 1 ) {
-		printusage(PROG_NAME);
+		print_usage(PROG_NAME);
 		return(R_ERROR);
 	}
 	// if the first argument is invert option, set invert boolean and
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 	// check if search string was given in args
 	if (searchstr == NULL || searchstr[0] == '\0') {
 		// if no search string given, print usage and exit
-		printusage(PROG_NAME);
+		print_usage(PROG_NAME);
 		// increment the error counter
 		founderror++;
 		return(R_ERROR);
@@ -189,13 +189,13 @@ int main(int argc, char *argv[]) {
 						filenames[fidx],
 						strerror(errno));
 					// remove unreadable file from array
-					removestr(filenames,fidx,numfiles);
+					remove_str(filenames,fidx,numfiles);
 					// decrement number of files
 					numfiles--;
 					// check for no valid files
 					if (numfiles<1) {
 						// print usage message
-						printusage(PROG_NAME);
+						print_usage(PROG_NAME);
 						// increment error counter
 						founderror++;
 						// return with error code
@@ -215,13 +215,13 @@ int main(int argc, char *argv[]) {
 					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
 				// remove nonexistent file from array
-				removestr(filenames,fidx,numfiles);
+				remove_str(filenames,fidx,numfiles);
 				// decrement number of files
 				numfiles--;
 				// check for no valid files
 				if (numfiles<1) {
 					// print usage message
-					printusage(PROG_NAME);
+					print_usage(PROG_NAME);
 					// increment error counter
 					founderror++;
 					// return with error code
@@ -321,7 +321,7 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	// if not reading from stdin, assume that memory was allocated for array
 	//  of filenames, so free the memory
-	if (! readstdin) { freestrarr(numfiles,filenames); }
+	if (! readstdin) { free_str_arr(numfiles,filenames); }
 	// return appropriate code based on if match was found or any errors
 	//  occurred
 	// if there are any errors, regardless of if there are any matches,
@@ -517,13 +517,13 @@ char *get_next_line(FILE *fpntr) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// freestrarr function
+// free_str_arr function
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // size is number of elements in string array
 // arr is the string array
 // frees allocated memory for a string array
-void freestrarr(int size, char **arr) {
+void free_str_arr(int size, char **arr) {
 	int idx;
 	for (idx=0; idx < size; idx++) {
 		free(arr[idx]);
@@ -534,12 +534,12 @@ void freestrarr(int size, char **arr) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// printusage function
+// print_usage function
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // progname is the designated name of this program
 // prints usage message
-void printusage(char *progname) {
+void print_usage(char *progname) {
 	fprintf(stderr,"Usage: %s [-v|--invert-match] STRING [FILE]...\n",
 		progname);
 }
@@ -547,14 +547,14 @@ void printusage(char *progname) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// removestr function
+// remove_str function
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // arr is array of strings
 // index is index to remove
 // len is length of the array
 // removes string from array at index
-void removestr(char **arr, int index, int len) {
+void remove_str(char **arr, int index, int len) {
 	// free memory of removed element
 	free(arr[index]);
 	// index to keep track of position in array
@@ -567,14 +567,14 @@ void removestr(char **arr, int index, int len) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// printstrarr function
+// print_str_arr function
 // ONLY FOR DEBUGGING PURPOSES
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // arr is array of strings
 // len is length of array
 // prints the array of strings, one per line
-void printstrarr(char **arr, int len) {
+void print_str_arr(char **arr, int len) {
 	// index to keep track of position in array
 	int idx;
 	// loop through array from beginning to end, printing each element on a
@@ -585,14 +585,14 @@ void printstrarr(char **arr, int len) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// printbuffer function
+// print_buffer function
 // ONLY FOR DEBUGGING PURPOSES
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // buff is buffer array of chars
 // len is length of array
 // prints the contents of buffer, character and hex, one per line
-void printbuffer(char *buff, int len) {
+void print_buffer(char *buff, int len) {
 	// index to keep track of position in array
 	int idx;
 	// loop through array from beginning to end, printing each element on a
