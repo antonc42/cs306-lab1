@@ -37,7 +37,7 @@
 #define R_ERROR 2
 // preprocessor directive for program name
 #define PROG_NAME "mygrep"
-// preprocessor directive of buffer size
+// preprocessor directive of initial buffer size
 #define BUFF_SIZE 1024
 
 // FUNCTION PROTOTYPES
@@ -48,13 +48,13 @@ void freestrarr(int size, char **arr);
 void printusage(char *progname);
 void removestr(char **arr, int index, int len);
 void printstrarr(char **arr, int len);
+void printbuffer(char *buff, int len);
 
 // main function
 int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// START VARIABLE DECLARATIONS
-	// TODO initialize pointers to NULL
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// boolean for inverse match
@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
 	// boolean for reading stdin instead of file
 	int readstdin = 0;
 	// file handle for open file
-	FILE *fileh;
+	FILE *fileh = NULL;
 	// search string from args
-	char *searchstr;
+	char *searchstr = NULL;
 	// file paths from args
-	char **filenames;
+	char **filenames = NULL;
 	// index of current position in argv - start from index 1 because index
 	//  0 is executable name
 	int argidx = 1;
@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
 		if (filenames == NULL) {
 			fprintf(stderr,"%s: error allocating memory: %s\n",
 				PROG_NAME,strerror(errno));
+			// increment error counter
 			founderror++;
 			return(R_ERROR);
 		}
@@ -137,13 +138,12 @@ int main(int argc, char *argv[]) {
 			// find length of arg
 			arglen = strlen(argv[argidx]);
 			// allocate some memory to store arg in filename array
-			// TODO remove char typecasting??
-			filenames[fidx] = (char *) malloc((arglen+1) * 
-				sizeof(char));
+			filenames[fidx] = malloc((arglen+1) * sizeof(char));
 			// if error allocating memory, print error and exit
 			if (filenames == NULL) {
 				fprintf(stderr,"%s: error allocating memory: %s"
 					"\n",PROG_NAME,strerror(errno));
+				// increment error counter
 				founderror++;
 				return(R_ERROR);
 			}
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 	// START ARGUMENT CHECKING
 	// if there is an error with the arguments, output should be a
-	//  usage message
+	//  usage message or useful error message if it is a non-fatal error
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	// check if search string was given in args
@@ -262,10 +262,11 @@ int main(int argc, char *argv[]) {
 		if (grepreturn == -1) {
 			fprintf(stderr,"%s: problem finding match: %s\n",
 				PROG_NAME,strerror(errno));
+			// increment the error counter
 			founderror++;
 			return(R_ERROR);
 		}
-		// if no error, add to foundmatch
+		// if no error, add to match counter
 		else { foundmatch += grepreturn; }
 	}
 	else {
@@ -279,6 +280,7 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr,"%s: file '%s' failed to open: "
 					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
+				// increment error counter
 				founderror++;
 				continue;
 			}
@@ -290,14 +292,17 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr,"%s: problem finding match in "
 					"file '%s': %s\n",PROG_NAME,
 					filenames[fidx],strerror(errno));
+				// increment error counter
 				founderror++;
 			}
+			// if no error in grep, add to match counter
 			else { foundmatch += grepreturn; }
 			// close the file, printing error if unsuccessful
 			if (fclose(fileh) != 0) {
 				fprintf(stderr,"%s: file '%s' failed to close: "
 					"%s\n",PROG_NAME,filenames[fidx],
 					strerror(errno));
+				// increment error counter
 				founderror++;
 			}
 		}
@@ -319,8 +324,17 @@ int main(int argc, char *argv[]) {
 	if (! readstdin) { freestrarr(numfiles,filenames); }
 	// return appropriate code based on if match was found or any errors
 	//  occurred
+	// if there are any errors, regardless of if there are any matches,
+	//  return with the error code
 	if (founderror>0) { return(R_ERROR); }
+	// if there were no errors and some lines were matched, return with the
+	//  match code. this also includes any lines not matching when the '-v'
+	//  or '--invert-match' option is specified
 	else if (foundmatch>0) { return(R_MATCH); }
+	// if there were no errors and no lines were matched, return with the
+	//  no match code. this also includes if there were no non-matching
+	//  lines (i.e. all lines matched) when the '-v' or '--invert-match'
+	//  option is specified
 	else { return(R_NOMATCH); }
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -329,6 +343,11 @@ int main(int argc, char *argv[]) {
 	////////////////////////////////////////////////////////////////////////
 }
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// grep_stream function
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // fpntr is an open file stream
 // string is the search string
 // file_pathname is the file path that was open, null if stdin
@@ -347,7 +366,9 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 	char *line;
 	// char to peek ahead
 	char peek;
-	// iteratively call function to get next line from the stream
+	
+	// iteratively call function to get next line from the stream until the
+	//  end of the file is reached
 	while (feof(fpntr) == 0) {
 		// peek ahead one character
 		peek = fgetc(fpntr);
@@ -363,7 +384,7 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 		else { break; }
 		// get next line from stream
 		// note: be aware that this function returns a pointer to a
-		//        a buffer (char array) that may be larger than the
+		//        buffer (char array) that may be larger than the
 		//        line. the buffer should contain the line as a null-
 		//        terminated string, so string operations should be
 		//        safe - however, be aware that there is likely other
@@ -374,8 +395,8 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 		//  return with negative error code to indicate problem to
 		//  calling function
 		if (line == NULL) {
-			fprintf(stderr,"%s: error reading line from file: %s\n",
-				PROG_NAME,strerror(errno));
+			fprintf(stderr,"%s: error reading line from file '%s': "
+				"%s\n",PROG_NAME,file_pathname,strerror(errno));
 			return(-1);
 		}
 		// for each returned line, check if it contains the search
@@ -405,7 +426,7 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 				//  filename before non-matching line
 				if (printfname) { printf("%s:%s\n",
 					file_pathname,line); }
-				// otherwise, just print non-matchingline
+				// otherwise, just print non-matching line
 				else { printf("%s\n",line); }
 			}
 		}
@@ -417,6 +438,11 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// get_next_line function
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // fpntr is an open file stream
 // read the next line from a stream and return it as a string, returns NULL if
 //  an I/O error occurs or the end of the file is reached
@@ -443,6 +469,8 @@ char *get_next_line(FILE *fpntr) {
 	// note that fgetc() has an int return type due to the possibility
 	//  of errors or EOF (normally -1) - the difference can be
 	//  distinguished using ferror() or feof() or even errno
+	// this function can handle three types of line ending: "\n", "\r", or
+	//  "\r\n"
 	while ((currchar = fgetc(fpntr)) != (int) '\n' &&
 		currchar != (int) '\r' && feof(fpntr) == 0 &&
 		ferror(fpntr) == 0)
@@ -456,6 +484,8 @@ char *get_next_line(FILE *fpntr) {
 			char *temp = realloc(line, (buffsize+1));
 			// return null from the function if realloc fails
 			if (temp == NULL) { return(NULL); }
+			// otherwise, set the buffer pointer to the newly
+			//  allocated space
 			else { line = temp; }
 			// put the returned char (after typecasting) at the next
 			//  position in the buffer
@@ -469,22 +499,27 @@ char *get_next_line(FILE *fpntr) {
 		}
 		// increment the buffer position counter
 		count++;
-		// if there was an error, return null from function
-		if (ferror(fpntr) != 0 ) { return(NULL); }
 	}
-	// deal with windows carriage return by getting next char but not adding
-	//  it to the buffer if it is a newline - if it is not a newline, put it
-	//  back
-	if (currchar == '\r' && (currchar = fgetc(fpntr) != '\n')) {
+	// if there was an error, return null from function
+	if (ferror(fpntr) != 0 ) { return(NULL); }
+	// deal with windows line ending, carriage return and line feed (\r\n)
+	//  by getting next char but not adding  it to the buffer if it is a
+	//  '\n' - if it is not '\n', put it back
+	if (currchar == '\r' && (currchar = fgetc(fpntr)) != (int) '\n') {
 		ungetc(currchar,fpntr);
 	}
 	// stringify the buffer by adding null char at the end of the chars
 	line[count] = '\0';
 	// return next line in the stream as a string
-	return line;
+	return(line);
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// freestrarr function
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // size is number of elements in string array
 // arr is the string array
 // frees allocated memory for a string array
@@ -497,6 +532,11 @@ void freestrarr(int size, char **arr) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// printusage function
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // progname is the designated name of this program
 // prints usage message
 void printusage(char *progname) {
@@ -505,6 +545,11 @@ void printusage(char *progname) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// removestr function
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // arr is array of strings
 // index is index to remove
 // len is length of the array
@@ -519,14 +564,39 @@ void removestr(char **arr, int index, int len) {
 	for (idx=index; idx<len-1; idx++) { arr[idx] = arr[idx+1]; }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// printstrarr function
+// ONLY FOR DEBUGGING PURPOSES
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // arr is array of strings
 // len is length of array
 // prints the array of strings, one per line
-// XXX ONLY FOR DEBUGGING PURPOSES
 void printstrarr(char **arr, int len) {
 	// index to keep track of position in array
 	int idx;
 	// loop through array from beginning to end, printing each element on a
 	//  separate line as a string
 	for (idx=0; idx<len; idx++) { printf("%s\n",arr[idx]); }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// printbuffer function
+// ONLY FOR DEBUGGING PURPOSES
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// buff is buffer array of chars
+// len is length of array
+// prints the contents of buffer, character and hex, one per line
+void printbuffer(char *buff, int len) {
+	// index to keep track of position in array
+	int idx;
+	// loop through array from beginning to end, printing each element on a
+	//  separate line showing the character and hex equivalent
+	for (idx=0; idx<len; idx++) { printf("buffer[%d]='%c' hex:%x\n",idx,
+		buff[idx],buff[idx]); }
 }
