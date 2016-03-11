@@ -18,6 +18,7 @@
 //       printed, 2 if there is an error
 //    X the return code 2 occurs in grep regardless of match or no match if
 //       an error occurs - this program behaves the same
+// XXX Extra Credit: allow regex in expression for character ranges, e.g. [a-z]
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -110,6 +111,7 @@ int main(int argc, char *argv[]) {
 	// if the first argument is invert option, set invert boolean and
 	//  increment arg index to next position
 	// note: if invert option is specified, it must be the first argument
+	// TODO use getopt for options
 	if ( strcmp(argv[argidx],"-v") == 0 ||
 		 strcmp(argv[argidx],"--invert-match") == 0 ) {
 		invert = 1;
@@ -431,6 +433,8 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 			}
 		}
 		// free allocated memory for this line
+		// TODO change position so that free only happens after last
+		//       time buffer is used due to buffer being static
 		free(line);
 	}
 	// return number of matched or non-matching lines
@@ -455,6 +459,7 @@ char *get_next_line(FILE *fpntr) {
 	int buffsize = BUFF_SIZE;
 	// char array to store line to return initialized with current buffer
 	//  size
+	// TODO make static so its only allocated once
 	char *line = malloc((buffsize+1) * sizeof(char));
 	// return null from the function if malloc fails
 	if (line == NULL) { return(NULL); }
