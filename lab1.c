@@ -18,7 +18,6 @@
 //       printed, 2 if there is an error
 //    X the return code 2 occurs in grep regardless of match or no match if
 //       an error occurs - this program behaves the same
-// XXX Extra Credit: allow regex in expression for character ranges, e.g. [a-z]
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -42,6 +41,9 @@
 #define BUFF_SIZE 1024
 
 // FUNCTION PROTOTYPES
+// TODO make grep_stream match spec in pdf
+//      maybe do getter/setter or something to check invert and printfname flags
+// TODO also make return codes of grep_stream and get_next_line match spec in pdf
 int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
  int printfname);
 char *get_next_line(FILE *fpntr);
@@ -111,7 +113,6 @@ int main(int argc, char *argv[]) {
 	// if the first argument is invert option, set invert boolean and
 	//  increment arg index to next position
 	// note: if invert option is specified, it must be the first argument
-	// TODO use getopt for options
 	if ( strcmp(argv[argidx],"-v") == 0 ||
 		 strcmp(argv[argidx],"--invert-match") == 0 ) {
 		invert = 1;
