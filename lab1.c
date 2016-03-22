@@ -30,7 +30,7 @@
 //  strerror()
 #include <errno.h>
 
-
+// PREPROCESSOR DIRECTIVES
 // preprocessor directives for exit codes
 #define R_MATCH 0
 #define R_NOMATCH 1
@@ -39,13 +39,19 @@
 #define PROG_NAME "mygrep"
 // preprocessor directive of initial buffer size
 #define BUFF_SIZE 1024
+// preprocessor directives for true/false
+#define TRUE 1
+#define FALSE 0
+
+// GLOBAL VARIABLES
+// boolean flag for -v or --invert-match option
+static int mg_invert = 0;
+// boolean flag for if there is more than one filename specified in cli options
+//  and the filename should be prepened to the matched output
+static int mg_printfname = 0;
 
 // FUNCTION PROTOTYPES
-// TODO make grep_stream match spec in pdf
-//      maybe do getter/setter or something to check invert and printfname flags
-// TODO also make return codes of grep_stream and get_next_line match spec in pdf
-int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
- int printfname);
+int grep_stream(FILE *fpntr, char *string, char *file_pathname);
 char *get_next_line(FILE *fpntr);
 void free_str_arr(int size, char **arr);
 void print_usage(char *progname);
@@ -60,8 +66,6 @@ int main(int argc, char *argv[]) {
 	// START VARIABLE DECLARATIONS
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	// boolean for inverse match
-	int invert = 0;
 	// boolean for reading stdin instead of file
 	int readstdin = 0;
 	// file handle for open file
@@ -79,16 +83,12 @@ int main(int argc, char *argv[]) {
 	int fidx = 0;
 	// length of each filename arg
 	int arglen;
-	// keep track of number of matches overall
+	// keep track of number of times grep_stream returns true overall
 	int foundmatch = 0;
 	// keep track of number of errors overall
 	int founderror = 0;
-	// boolean to signal if filename should be prepended before matched
-	//  lines. this should only happen if more than one filename is given in
-	//  args
-	int printfname = 0;
-	// temporary storage for number of matches each time grep_stream is
-	//  called
+	// temporary storage for number of times grep_stream returned true,
+	//  meaning there was a match
 	int grepreturn;
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
 	// note: if invert option is specified, it must be the first argument
 	if ( strcmp(argv[argidx],"-v") == 0 ||
 		 strcmp(argv[argidx],"--invert-match") == 0 ) {
-		invert = 1;
+		mg_invert = 1;
 		argidx++;
 	}
 	// get the search string from arg
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
 		}
 		// if more than one valid file is given in args, set flag to
 		//  print filename before matched lines
-		if (numfiles > 1) { printfname = 1; }
+		if (numfiles > 1) { mg_printfname = 1; }
 	}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -259,8 +259,7 @@ int main(int argc, char *argv[]) {
 	// if no files were given, read from stdin
 	if (readstdin) {
 		// look for string match in stdin
-		grepreturn = grep_stream(stdin,searchstr,NULL,invert,
-			printfname);
+		grepreturn = grep_stream(stdin,searchstr,NULL);
 		// if error in grep, print error and exit
 		if (grepreturn == -1) {
 			fprintf(stderr,"%s: problem finding match: %s\n",
@@ -289,7 +288,7 @@ int main(int argc, char *argv[]) {
 			}
 			// look for string match in file
 			grepreturn = grep_stream(fileh,searchstr,
-				filenames[fidx],invert,printfname);
+				filenames[fidx]);
 			// if error in grep, print error
 			if (grepreturn == -1) {
 				fprintf(stderr,"%s: problem finding match in "
@@ -354,17 +353,14 @@ int main(int argc, char *argv[]) {
 // fpntr is an open file stream
 // string is the search string
 // file_pathname is the file path that was open, null if stdin
-// invert is boolean to match normally or invert match
-// printfname is boolean to print filenames before matching lines if more than
-//  one file is given in args
 // reads line-by-line through the file, matches lines based on the search
-//  string, prints them to stdout, returns number of matched (printed) lines
+//  string, prints them to stdout, returns true if any lines matched, false
+//  otherwise
 // note: this function should always return, never calling exit()
-int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
-	int printfname) {
-	// initialize return code to zero
+int grep_stream(FILE *fpntr, char *string, char *file_pathname) {
+	// initialize match count to zero
 	// increments by 1 if line is matched
-	int returncode = 0;
+	int matchcount = 0;
 	// string to store each line
 	char *line;
 	// char to peek ahead
@@ -407,12 +403,12 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 		if (strstr(line,string) != NULL) {
 			// if the line should be as normal match, print to
 			//  stdout
-			if (invert != 1) {
-				// increment return code to indicate match
-				returncode++;
+			if (mg_invert != 1) {
+				// increment match count
+				matchcount++;
 				// if more than one file specified, print
 				//  filename before matched line
-				if (printfname) { printf("%s:%s\n",
+				if (mg_printfname) { printf("%s:%s\n",
 					file_pathname,line); }
 				// otherwise, just print matched line
 				else { printf("%s\n",line); }
@@ -422,12 +418,12 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 		else {
 			// print lines that do not match if the invert option
 			//  specified
-			if (invert == 1) {
-				// increment return code to indicate non-match
-				returncode++;
+			if (mg_invert == 1) {
+				// increment match count
+				matchcount++;
 				// if more than one file specified, print
 				//  filename before non-matching line
-				if (printfname) { printf("%s:%s\n",
+				if (mg_printfname) { printf("%s:%s\n",
 					file_pathname,line); }
 				// otherwise, just print non-matching line
 				else { printf("%s\n",line); }
@@ -436,8 +432,9 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 		// free allocated memory for this line
 		free(line);
 	}
-	// return number of matched or non-matching lines
-	return(returncode);
+	// return true if any number of lines matched, false otherwise
+	if (matchcount > 0) { return(TRUE); }
+	else { return(FALSE); }
 }
 
 
