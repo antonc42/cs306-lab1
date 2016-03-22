@@ -434,8 +434,6 @@ int grep_stream(FILE *fpntr, char *string, char *file_pathname, int invert,
 			}
 		}
 		// free allocated memory for this line
-		// TODO change position so that free only happens after last
-		//       time buffer is used due to buffer being static
 		free(line);
 	}
 	// return number of matched or non-matching lines
@@ -460,7 +458,6 @@ char *get_next_line(FILE *fpntr) {
 	int buffsize = BUFF_SIZE;
 	// char array to store line to return initialized with current buffer
 	//  size
-	// TODO make static so its only allocated once
 	char *line = malloc((buffsize+1) * sizeof(char));
 	// return null from the function if malloc fails
 	if (line == NULL) { return(NULL); }
